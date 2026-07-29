@@ -1,0 +1,955 @@
+<title>FLEET × GRAPH — auth audit console</title>
+<style>
+  :root {
+    --void:   #05070a;
+    --panel:  #080d10;
+    --panel2: #0a1014;
+    --rule:   #152420;
+    --rule2:  #1d302a;
+    --dim:    #3f5049;
+    --mid:    #6b8078;
+    --text:   #aebfb4;
+    --scan:     #7cc02c;
+    --scan-hi:  #a6e327;
+    --scan-dim: #2f4718;
+    --vfy:      #1d8fc9;
+    --vfy-hi:   #3cc9f2;
+    --vfy-dim:  #103245;
+    --warn:   #c8a02a;
+    --hot:    #e8f5d0;
+    --mono: "Berkeley Mono", "IBM Plex Mono", "JetBrains Mono", "Roboto Mono",
+            "SF Mono", ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace;
+  }
+
+  /* This artifact commits to a single visual world: a dark operations console.
+     Backgrounds are set explicitly so a light-theme viewer still gets the console. */
+  html, body {
+    margin: 0;
+    background: var(--void);
+    color: var(--text);
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 11px;
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* The grid must not reflow, so the console keeps its width and scrolls
+     inside this element. The page body never scrolls sideways. */
+  .scroller { width: 100%; overflow-x: auto; overflow-y: hidden; }
+
+  .console {
+    width: 1240px;
+    min-width: 1240px;
+    margin: 0 auto;
+    height: 100vh;
+    min-height: 780px;
+    padding: 6px;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    gap: 6px;
+  }
+
+  /* ---- shared panel chrome ---- */
+  .p {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .p > header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    padding: 4px 6px 3px;
+    border-bottom: 1px solid var(--rule);
+    color: var(--mid);
+    font-size: 8.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    flex: none;
+  }
+  .p > header b { color: var(--scan); font-weight: 400; }
+  .p > .body { min-height: 0; overflow: auto; padding: 6px; }
+
+  .bar-top, .bar-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 3px 6px;
+    border: 1px solid var(--rule);
+    background: var(--panel2);
+    color: var(--dim);
+    font-size: 8.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .bar-top { color: var(--mid); }
+  .bar-top .brand { color: var(--scan-hi); letter-spacing: 0.24em; }
+  .bar-foot .live { color: var(--scan); }
+
+  /* ---- three-column stage ---- */
+  .stage {
+    display: grid;
+    grid-template-columns: 186px minmax(0, 1fr) 226px;
+    gap: 6px;
+    min-height: 0;
+  }
+  .mid-col {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) 214px;
+    gap: 6px;
+    min-height: 0;
+  }
+  .mid-low {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 92px;
+    gap: 6px;
+    min-height: 0;
+  }
+
+  /* ---- left: worker rail ---- */
+  .rail { display: flex; flex-direction: column; gap: 5px; }
+  .rc {
+    border: 1px solid var(--rule);
+    background: var(--panel2);
+    padding: 3px 4px 4px;
+  }
+  .rc.busy { border-color: var(--scan-dim); }
+  .rc.vfy  { border-color: var(--vfy-dim); }
+  .rc-h {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 9px; letter-spacing: 0.1em; color: var(--mid);
+  }
+  .rc.busy .rc-h { color: var(--scan); }
+  .rc.vfy  .rc-h { color: var(--vfy-hi); }
+  .rc-h b { color: var(--text); font-weight: 400; }
+  .rc-track { height: 2px; background: #0e1614; margin: 3px 0; }
+  .rc-track i { display: block; height: 100%; background: var(--scan); transition: width .18s linear; }
+  .rc.vfy .rc-track i { background: var(--vfy); }
+  .rc-m { font-size: 8px; color: var(--dim); letter-spacing: 0.06em; }
+  .rc-spark { display: flex; align-items: flex-end; gap: 1px; height: 13px; margin-top: 3px; }
+  .rc-spark i { flex: 1; background: var(--scan-dim); min-height: 1px; }
+  .rc-spark i.hi { background: var(--scan); }
+  .rc-spark i.v  { background: var(--vfy); }
+
+  /* ---- centre: graph ---- */
+  .graph-top {
+    display: grid;
+    grid-template-columns: 142px minmax(0, 1fr);
+    gap: 8px;
+    min-height: 0;
+    flex: 1;
+  }
+  .vtable { display: flex; flex-direction: column; min-height: 0; font-size: 9px; }
+  .vtable .vh {
+    display: grid; grid-template-columns: 28px 20px 1fr; gap: 6px;
+    color: var(--dim); letter-spacing: 0.06em; padding-bottom: 2px;
+    font-size: 7.5px; flex: none;
+    border-bottom: 1px solid var(--rule);
+  }
+  #vrows { overflow-y: auto; min-height: 0; }
+  .vrow {
+    display: grid; grid-template-columns: 28px 20px 1fr; gap: 6px;
+    align-items: center; padding: 1px 0;
+    border-bottom: 1px solid #0c1211;
+    color: var(--mid); cursor: pointer;
+  }
+  .vrow:hover, .vrow:focus-visible { background: #0d1512; outline: none; color: var(--text); }
+  .vrow.sel { background: #101a15; }
+  .vrow.idle { color: var(--dim); opacity: .45; }
+  .vrow .hits { color: var(--text); }
+  .vrow.idle .hits { color: var(--dim); }
+  .chip {
+    font-size: 8px; letter-spacing: 0.08em; padding: 0 3px;
+    border: 1px solid transparent; justify-self: start;
+  }
+  .chip.confirmed { color: var(--scan-hi); border-color: var(--scan); }
+  .chip.rejected  { color: var(--warn);   border-color: #4d3f12; }
+  .chip.pending   { color: var(--vfy-hi); border-color: var(--vfy-dim); }
+  .chip.clean     { color: var(--dim);    border-color: var(--rule2); }
+  .chip.queued    { color: var(--dim); }
+
+  #radial { display: block; width: 100%; height: 100%; }
+  .radial-wrap { position: relative; min-height: 0; }
+
+  .sect-label {
+    font-size: 8px; letter-spacing: 0.14em; color: var(--dim);
+    text-transform: uppercase; margin: 7px 0 3px;
+  }
+
+  /* worker × phase heatmap */
+  .heat { display: grid; gap: 1px; }
+  .heat .hrow { display: grid; grid-template-columns: repeat(56, 1fr); gap: 1px; }
+  .heat i { height: 6px; background: #0b1110; }
+
+  /* derived metrics */
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 7px; }
+  .tile { border: 1px solid var(--rule); padding: 4px 5px; background: var(--panel2); }
+  .tile span { display: block; font-size: 7.5px; letter-spacing: 0.14em; color: var(--dim); text-transform: uppercase; }
+  .tile b { display: block; font-size: 17px; font-weight: 400; color: var(--text); letter-spacing: 0.02em; }
+  .tile.up b { color: var(--scan-hi); }
+  .tile.flat b { color: var(--warn); }
+
+  /* "and then" audit */
+  .audit { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 10px; font-size: 8.5px; }
+  .audit div { display: flex; justify-content: space-between; gap: 6px; color: var(--dim); }
+  .audit .real { color: var(--scan); }
+  .audit .real em { color: var(--scan-hi); font-style: normal; }
+  .audit .tail em { color: var(--vfy-hi); font-style: normal; }
+
+  /* critical path */
+  .crit { position: relative; height: 16px; margin-top: 4px; }
+  .crit .track { position: absolute; top: 7px; left: 0; right: 0; height: 2px; background: #101a17; }
+  .crit .seg { position: absolute; top: 7px; height: 2px; background: var(--scan); }
+  .crit .seg.tail { background: var(--vfy); }
+  .crit .dot {
+    position: absolute; top: 4px; width: 8px; height: 8px; margin-left: -4px;
+    border: 1px solid var(--scan); background: var(--void); border-radius: 50%;
+  }
+  .crit .dot.tail { border-color: var(--vfy-hi); background: var(--vfy); }
+
+  .statusline {
+    display: flex; justify-content: space-between; margin-top: 7px;
+    font-size: 8px; letter-spacing: 0.1em; color: var(--dim);
+  }
+  .statusline b { color: var(--mid); font-weight: 400; }
+  .badge {
+    margin-top: 6px; align-self: flex-start;
+    border: 1px solid var(--vfy-dim); color: var(--vfy-hi);
+    font-size: 8px; letter-spacing: 0.16em; padding: 2px 6px;
+  }
+  .badge.merge { border-color: var(--scan-dim); color: var(--scan-hi); }
+
+  /* ---- orchestrator source ---- */
+  pre.src { margin: 0; font-size: 9px; line-height: 1.5; color: var(--mid); white-space: pre; }
+  pre.src .c  { color: var(--dim); }
+  pre.src .k  { color: var(--vfy-hi); }
+  pre.src .f  { color: var(--scan); }
+  pre.src .s  { color: var(--warn); }
+  pre.src .hl { color: var(--hot); }
+
+  /* ---- tally ---- */
+  .tally { font-size: 8px; }
+  .tally dt { color: var(--dim); letter-spacing: 0.1em; border-bottom: 1px solid var(--rule); }
+  .tally dd { margin: 0 0 5px; color: var(--text); font-size: 12px; }
+  .tally dd.g { color: var(--scan-hi); }
+  .tally dd.v { color: var(--vfy-hi); }
+  .tally dd.w { color: var(--warn); }
+
+  /* ---- right: stream log ---- */
+  .log { font-size: 8.5px; line-height: 1.45; color: var(--dim); }
+  .log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .log .n { color: #2c3a34; }
+  .log .hi { color: var(--scan-hi); }
+  .log .warn { color: var(--warn); }
+  .log .v { color: var(--vfy-hi); }
+  .log .hot { color: var(--hot); }
+
+  /* ---- command bar ---- */
+  .cmd { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px; }
+  .cmd .field {
+    border: 1px solid var(--rule); background: var(--panel2);
+    padding: 4px 7px; color: var(--mid); font-size: 9.5px; letter-spacing: 0.05em;
+  }
+  .cmd .field b { color: var(--text); font-weight: 400; }
+  .cmd button {
+    font-family: inherit; font-size: 8.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    padding: 4px 14px; cursor: pointer;
+    border: 1px solid var(--scan); background: var(--scan); color: #07120a;
+  }
+  .cmd button[data-state="paused"] { background: transparent; color: var(--warn); border-color: var(--warn); }
+  .cmd button:focus-visible { outline: 2px solid var(--vfy-hi); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rc-track i { transition: none; }
+  }
+</style>
+
+<div class="scroller">
+  <div class="console">
+
+    <div class="bar-top">
+      <span class="brand">FLEET × GRAPH</span>
+      <span>LAT <b id="lat">00.4</b>MS · FRESH CTX · <span id="link">ONLINE</span></span>
+    </div>
+
+    <div class="stage">
+
+      <!-- ============ worker rail ============ -->
+      <section class="p">
+        <header><span>// worker rail</span><b id="railw">16 W</b></header>
+        <div class="body rail" id="rail"></div>
+      </section>
+
+      <!-- ============ graph ============ -->
+      <section class="p">
+        <header><span>// fan out · verify · merge</span><b id="wave">WAVE 1/3</b></header>
+        <div class="body" style="display:flex; flex-direction:column;">
+
+          <div class="graph-top">
+            <div class="vtable">
+              <div class="vh"><span>ROUTE</span><span>HIT</span><span>VERDICT</span></div>
+              <div id="vrows"></div>
+            </div>
+            <div class="radial-wrap"><canvas id="radial"></canvas></div>
+          </div>
+
+          <div class="sect-label">worker × phase &nbsp;(scan · verify · merge)</div>
+          <div class="heat" id="heat"></div>
+
+          <div class="tiles">
+            <div class="tile up"><span>indep p</span><b id="m-indep">000.00</b></div>
+            <div class="tile up"><span>speedup ×</span><b id="m-speed">000.00</b></div>
+            <div class="tile"><span>crit path s</span><b id="m-crit">000.00</b></div>
+            <div class="tile flat"><span>billed u</span><b id="m-bill">000.00</b></div>
+          </div>
+
+          <div class="sect-label">"and then" audit — does the next step read the previous output?</div>
+          <div class="audit" id="audit"></div>
+
+          <div class="crit" id="crit"><div class="track"></div></div>
+          <div class="sect-label" style="margin-top:2px">critical path — the floor 16 workers cannot shorten</div>
+
+          <div class="statusline">
+            <span>FLEET ONLINE &nbsp; WORKERS <b id="s-workers">00/16</b> &nbsp; FRESH CTX <b id="s-ctx">00/00</b></span>
+            <span>SCAN <b id="s-scan">000.0%</b> &nbsp; VERIFY <b id="s-vfy">000.0%</b> &nbsp; FRAME <b id="s-frame">0000</b></span>
+          </div>
+          <div class="badge" id="badge">[ SCANNING · FAN OUT ]</div>
+        </div>
+      </section>
+
+      <!-- ============ stream log ============ -->
+      <section class="p">
+        <header><span>// stream log</span><b>[live]</b></header>
+        <div class="body log" id="log" role="log" aria-live="off" aria-label="Agent stream log"></div>
+      </section>
+    </div>
+
+    <!-- ============ orchestrator + tally ============ -->
+    <div class="mid-low" style="grid-template-columns: 186px minmax(0,1fr) 226px;">
+      <section class="p">
+        <header><span>// tally</span></header>
+        <div class="body">
+          <dl class="tally" id="tally"></dl>
+        </div>
+      </section>
+
+      <section class="p">
+        <header><span>// orchestrator</span><b>[graph]</b></header>
+        <div class="body">
+<pre class="src"><span class="c"># orchestrator: build a graph, not a chain</span>
+graph = <span class="f">Graph</span>(workers=<span class="s">16</span>, share_state=<span class="k">False</span>)
+
+<span class="k">for</span> route <span class="k">in</span> routes:                  <span class="c"># fan out — no edges between audits</span>
+    graph.<span class="f">node</span>(audit, route)
+
+<span class="k">for</span> hit <span class="k">in</span> graph.results:            <span class="c"># real edge: verify reads the finding</span>
+    graph.<span class="f">node</span>(verify, hit, reuse=<span class="k">False</span>)   <span class="c"># fresh ctx, never the author</span>
+
+<span class="k">assert</span> verifier <span class="k">is not</span> author        <span class="c"># nobody grades their own exam</span>
+seen.<span class="f">update</span>(hits)                     <span class="c"># dedupe vs SEEN, not confirmed</span>
+<span class="f">merge</span>(confirmed).<span class="f">to_report</span>()          <span class="c"># barrier — needs the whole set</span></pre>
+        </div>
+      </section>
+
+      <section class="p">
+        <header><span>// verifier lenses</span></header>
+        <div class="body log" id="lenses"></div>
+      </section>
+    </div>
+
+    <div class="cmd">
+      <div class="field">&gt; <b>audit every route handler for a missing auth check</b><span id="caret"> ▌</span></div>
+      <button id="toggle" data-state="running" type="button">running graph</button>
+    </div>
+
+    <div class="bar-foot">
+      <span>SYSTEM STATUS: <span class="live" id="f-status">CONNECTED</span></span>
+      <span id="f-t">T-00</span>
+      <span>STAGE: <span id="f-stage">FAN OUT</span></span>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // The real runtime caps a workflow at 16 concurrent agents (fewer on
+  // CPU-limited machines) and 1000 agents per run. Both are honoured here.
+  const WORKERS   = 16;
+  const N_ROUTES  = 20;
+  const MAX_AGENTS = 1000;
+  const LENSES    = ['correct', 'security', 'repro'];
+  // The heatmap reads as occupancy lanes over time: 4 scan lanes above
+  // 3 verify lanes, each column one time slice of the run.
+  const SCAN_LANES = 4, VFY_LANES = 3;
+  const HEAT_ROWS = SCAN_LANES + VFY_LANES;
+  const HEAT_COLS = 56;
+
+  const ROUTE_FILES = [
+    'admin/users.ts','admin/billing.ts','api/session.ts','api/keys.ts',
+    'api/webhook.ts','auth/callback.ts','auth/logout.ts','export/csv.ts',
+    'files/upload.ts','files/sign.ts','org/invite.ts','org/members.ts',
+    'pay/charge.ts','pay/refund.ts','pub/health.ts','pub/status.ts',
+    'search/query.ts','user/profile.ts','user/email.ts','user/delete.ts'
+  ];
+
+  const $  = (id) => document.getElementById(id);
+  const el = (tag, cls) => { const n = document.createElement(tag); if (cls) n.className = cls; return n; };
+  const pad = (v, d = 2, w = 6) => Math.max(0, v).toFixed(d).padStart(w, '0');
+  const pad0 = (v, w) => String(v).padStart(w, '0');
+  const rid = (i) => 'r' + pad0(i + 1, 2);
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const pick = (a) => a[(Math.random() * a.length) | 0];
+
+  // ------------------------------------------------------------------ state
+  let S;
+  function reset() {
+    S = {
+      t: 0, frame: 0, wave: 1, waves: 3, dry: 0, agents: 0,
+      stage: 'fan out', running: true, sel: -1, logn: 100,
+      routes: ROUTE_FILES.map((f, i) => ({
+        id: rid(i), file: f, i,
+        state: 'queued',      // queued | scanning | scanned | verifying | done
+        hits: 0, verdict: null, author: -1, verifier: -1,
+        dur: rnd(1.4, 4.4), vdur: rnd(0.9, 2.2), t0: 0, t1: 0, prog: 0,
+        votes: null
+      })),
+      // worker slots: null when idle, else {route, phase, until}
+      slots: Array.from({ length: WORKERS }, () => null),
+      util:  Array.from({ length: WORKERS }, () => 0),
+      spark: Array.from({ length: WORKERS }, () => Array(14).fill(0)),
+      heat:  Array.from({ length: HEAT_ROWS }, () => Array(HEAT_COLS).fill(0)),
+      verifiers: [],          // {id, route, ok, t}
+      seen: new Set(),
+      confirmed: [], rejected: [], commits: 0, tokens: 0,
+      serial: 0, crit: 0, billed: 0, merged: false, done: false
+    };
+    log('hot', 'graph compiled · 20 audit nodes · 0 edges between them');
+    log('n',   'workers 16 · share_state False · fresh ctx per verify');
+  }
+
+  // ------------------------------------------------------------------- log
+  const logBox = $('log');
+  function log(kind, text) {
+    const d = el('div');
+    const n = el('span', 'n');
+    n.textContent = '[' + pad0(S ? S.logn++ : 100, 4) + '] ';
+    const b = el('span', kind);
+    b.textContent = text;
+    d.append(n, b);
+    logBox.appendChild(d);
+    while (logBox.childElementCount > 150) logBox.removeChild(logBox.firstChild);
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  // ------------------------------------------------------------------ build
+  const rail = $('rail'), railCards = [];
+  for (let w = 0; w < WORKERS; w++) {
+    const c = el('div', 'rc');
+    const h = el('div', 'rc-h');
+    const name = el('span'); name.textContent = 'WORKER_' + pad0(w + 1, 2);
+    const val = el('b'); val.textContent = '000.0%';
+    h.append(name, val);
+    const track = el('div', 'rc-track'); const fill = el('i'); track.appendChild(fill);
+    const meta = el('div', 'rc-m'); meta.textContent = 'idle  q000  00.0ms';
+    const sp = el('div', 'rc-spark');
+    const bars = [];
+    for (let i = 0; i < 14; i++) { const b = el('i'); sp.appendChild(b); bars.push(b); }
+    c.append(h, track, meta, sp);
+    rail.appendChild(c);
+    railCards.push({ c, name, val, fill, meta, bars });
+  }
+
+  const vrowsBox = $('vrows'), vrows = [];
+  for (let i = 0; i < N_ROUTES; i++) {
+    const r = el('div', 'vrow idle');
+    r.tabIndex = 0;
+    const id = el('span'); id.textContent = rid(i);
+    const hits = el('span', 'hits'); hits.textContent = '0';
+    const chip = el('span', 'chip queued'); chip.textContent = '—';
+    r.append(id, hits, chip);
+    r.addEventListener('click', () => select(i));
+    r.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(i); } });
+    vrowsBox.appendChild(r);
+    vrows.push({ r, hits, chip });
+  }
+  function select(i) {
+    S.sel = (S.sel === i) ? -1 : i;
+    vrows.forEach((v, k) => v.r.classList.toggle('sel', k === S.sel));
+    if (S.sel >= 0) {
+      const rt = S.routes[i];
+      log('v', rt.id + ' → src/routes/' + rt.file + ' · ' + rt.hits + ' hit(s) · ' + (rt.verdict || 'pending'));
+    }
+  }
+
+  const heatBox = $('heat'), heatCells = [];
+  for (let y = 0; y < HEAT_ROWS; y++) {
+    const row = el('div', 'hrow'); const cells = [];
+    for (let x = 0; x < HEAT_COLS; x++) { const c = el('i'); row.appendChild(c); cells.push(c); }
+    heatBox.appendChild(row); heatCells.push(cells);
+  }
+
+  const tallyBox = $('tally');
+  const TALLY = [
+    ['scanned', 'g'], ['hits', 'w'], ['confirmed', 'g'], ['rejected', 'w'],
+    ['workers', ''], ['verifiers', 'v'], ['commits', ''], ['tokens', '']
+  ];
+  const tallyVals = {};
+  TALLY.forEach(([k, cls]) => {
+    const dt = el('dt'); dt.textContent = k.toUpperCase();
+    const dd = el('dd', cls); dd.textContent = '0';
+    tallyBox.append(dt, dd);
+    tallyVals[k] = dd;
+  });
+
+  // --------------------------------------------------------------- scheduler
+  function freeSlot() { return S.slots.findIndex((s) => s === null); }
+  function queuedRoutes() { return S.routes.filter((r) => r.state === 'queued'); }
+  function pendingVerify() { return S.routes.filter((r) => r.state === 'scanned' && r.hits > 0); }
+
+  function schedule() {
+    if (S.done) return;
+
+    // fan out: every audit node is independent, so any free worker takes one
+    let q = queuedRoutes();
+    while (q.length && S.agents < MAX_AGENTS) {
+      const s = freeSlot(); if (s < 0) break;
+      const r = q.shift();
+      r.state = 'scanning'; r.author = s; r.t0 = S.t; r.prog = 0;
+      S.slots[s] = { r, phase: 'scan', until: S.t + r.dur };
+      S.agents++;
+      log('n', 'scan ' + r.id + ' spawned · w' + pad0(s + 1, 2) + ' · ' + r.file);
+      q = queuedRoutes();
+    }
+
+    // real edge: a finding flows into a verifier on fresh context
+    let pv = pendingVerify();
+    while (pv.length && S.agents < MAX_AGENTS) {
+      const s = freeSlot(); if (s < 0) break;
+      const r = pv.shift();
+      if (s === r.author) {                       // never grade your own exam
+        const alt = S.slots.findIndex((x, k) => x === null && k !== r.author);
+        if (alt < 0) break;
+        assign(r, alt);
+      } else assign(r, s);
+      pv = pendingVerify();
+    }
+  }
+  function assign(r, s) {
+    r.state = 'verifying'; r.verifier = s; r.prog = 0;
+    S.slots[s] = { r, phase: 'verify', until: S.t + r.vdur };
+    S.agents++;
+    const v = { id: 'v' + pad0(S.verifiers.length + 1, 2), route: r, ok: null };
+    S.verifiers.push(v); r.vnode = v;
+    log('v', 'spawn ' + v.id + ' fresh ctx · w' + pad0(s + 1, 2) + ' ≠ author w' + pad0(r.author + 1, 2));
+    log('n', 'edge ' + r.id + ' → ' + v.id + ' REAL EDGE');
+  }
+
+  function finishScan(r, s) {
+    r.state = 'scanned'; r.t1 = S.t;
+    S.slots[s] = null;
+    const roll = Math.random();
+    const raw = roll < 0.52 ? 0 : roll < 0.76 ? 1 : roll < 0.92 ? 2 : 3;
+    // dedupe against everything SEEN, not everything confirmed
+    let fresh = 0;
+    for (let k = 0; k < raw; k++) {
+      const key = r.id + ':' + k;
+      if (!S.seen.has(key)) { S.seen.add(key); fresh++; }
+    }
+    r.hits = fresh;
+    if (fresh === 0) {
+      r.state = 'done'; r.verdict = 'CLEAN';
+      log('n', 'scan ' + r.id + ' guard present');
+    } else {
+      r.verdict = 'PENDING';
+      log('warn', 'scan ' + r.id + ' MISSING auth ×' + fresh);
+    }
+  }
+
+  function finishVerify(r, s) {
+    S.slots[s] = null;
+    // diverse lenses, majority vote — two identical checks find one failure mode
+    const votes = LENSES.map(() => Math.random() < 0.58);
+    const yes = votes.filter(Boolean).length;
+    r.votes = votes;
+    r.state = 'done';
+    if (yes >= 2) {
+      r.verdict = 'CONFIRMED'; S.confirmed.push(r); r.vnode.ok = true;
+      log('hi', 'verify ' + r.id + ' CONFIRMED ' + yes + '/3 lenses');
+    } else {
+      r.verdict = 'REJECTED'; S.rejected.push(r); r.vnode.ok = false;
+      log('warn', 'verify ' + r.id + ' REJECTED ' + yes + '/3 killed');
+    }
+    lens(r, yes);
+  }
+
+  const lensBox = $('lenses');
+  function lens(r, yes) {
+    const d = el('div');
+    const n = el('span', 'n'); n.textContent = r.vnode.id + ' ';
+    const b = el('span', yes >= 2 ? 'hi' : 'warn');
+    b.textContent = r.id + ' ' + LENSES.map((l, i) => (r.votes[i] ? l : l.toUpperCase().slice(0, 1) + '·')).join(' ') +
+                    '  ' + (yes >= 2 ? 'OK' : 'REJ');
+    d.append(n, b);
+    lensBox.appendChild(d);
+    while (lensBox.childElementCount > 40) lensBox.removeChild(lensBox.firstChild);
+    lensBox.scrollTop = lensBox.scrollHeight;
+  }
+
+  // ------------------------------------------------------------------- tick
+  function step(dt) {
+    S.t += dt; S.frame++;
+    if (S.done) {   // run settled: let the utilisation traces fall to idle
+      for (let s = 0; s < WORKERS; s++) S.util[s] = Math.max(0, S.util[s] - dt * 110);
+      return;
+    }
+
+    for (let s = 0; s < WORKERS; s++) {
+      const job = S.slots[s];
+      if (!job) { S.util[s] = Math.max(0, S.util[s] - dt * 110); continue; }
+      const r = job.r;
+      const total = job.phase === 'scan' ? r.dur : r.vdur;
+      r.prog = Math.min(1, 1 - (job.until - S.t) / total);
+      S.util[s] = 40 + r.prog * 60;
+      S.billed += dt;                                  // agent-seconds: parallelism does not reduce this
+      S.tokens += dt * rnd(180, 460);
+      if (S.t >= job.until) {
+        if (job.phase === 'scan') finishScan(r, s); else finishVerify(r, s);
+      }
+    }
+
+    schedule();
+
+    // wave / barrier logic — loop until dry, then merge
+    const open = S.routes.some((r) => r.state !== 'done');
+    if (!open && !S.merged) {
+      if (S.wave < S.waves) {
+        S.dry = S.confirmed.length ? 0 : S.dry + 1;
+        log('n', 'wave ' + S.wave + ' complete · ' + S.confirmed.length + ' confirmed · rescanning for new findings');
+        S.wave++;
+        S.stage = 'fan out';
+        // loop back: re-open a slice; dedupe vs SEEN keeps rejects from returning
+        S.routes.forEach((r) => {
+          if (Math.random() < 0.4) {
+            r.state = 'queued'; r.dur = rnd(1.0, 3.0); r.vdur = rnd(0.8, 1.8);
+            r.hits = 0; r.verdict = null; r.prog = 0;
+          }
+        });
+      } else {
+        S.merged = true; S.stage = 'merge';
+        S.commits = S.confirmed.length;
+        log('hot', 'BARRIER — merge needs the whole set · ' + S.confirmed.length + ' confirmed');
+        log('hi', 'report written · ' + S.rejected.length + ' rejected never reached it');
+        setTimeout(() => {
+          if (REDUCED) return;
+          logBox.textContent = ''; lensBox.textContent = '';
+          reset(); rebuildAudit();
+        }, 8000);
+        S.done = true;
+      }
+    }
+
+    // derived metrics — computed from the graph, not decoration
+    const doneNodes = S.routes.filter((r) => r.t1 > 0);
+    S.serial = S.routes.reduce((a, r) => a + r.dur + (r.hits > 0 ? r.vdur : 0), 0);
+    const longest = Math.max(0.001, ...S.routes.map((r) => r.dur + (r.hits > 0 ? r.vdur : 0)));
+    S.crit = longest + 0.4;                            // + the merge barrier
+    S.indep = N_ROUTES / (N_ROUTES + S.verifiers.length + 1);
+    S.speed = S.serial / S.crit;
+
+    // rolling per-worker history
+    if (S.frame % 6 === 0) {
+      for (let w = 0; w < WORKERS; w++) {
+        const job = S.slots[w];
+        S.spark[w].push(job ? (job.phase === 'scan' ? 1 : 2) : 0);
+        S.spark[w].shift();
+      }
+      // one column per slice: how many workers sat in each phase
+      const scanN = S.slots.filter((j) => j && j.phase === 'scan').length;
+      const vfyN  = S.slots.filter((j) => j && j.phase === 'verify').length;
+      for (let y = 0; y < HEAT_ROWS; y++) {
+        const lane = y < SCAN_LANES ? y : y - SCAN_LANES;
+        const per  = y < SCAN_LANES ? WORKERS / SCAN_LANES : WORKERS / VFY_LANES;
+        const n    = y < SCAN_LANES ? scanN : vfyN;
+        S.heat[y].push(Math.max(0, Math.min(1, (n - lane * per) / per)));
+        S.heat[y].shift();
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------ paint
+  function paint() {
+    // rail
+    for (let w = 0; w < WORKERS; w++) {
+      const card = railCards[w], job = S.slots[w];
+      card.c.classList.toggle('busy', !!job && job.phase === 'scan');
+      card.c.classList.toggle('vfy',  !!job && job.phase === 'verify');
+      card.val.textContent = pad(S.util[w], 1, 5) + '%';
+      card.fill.style.width = Math.round(S.util[w]) + '%';
+      const q = queuedRoutes().length;
+      card.meta.textContent = job
+        ? job.phase + ' ' + job.r.id + '  q' + pad0(q, 3) + '  ' + pad(job.r.prog * 100, 1, 5) + '%'
+        : 'idle  q' + pad0(q, 3) + '  00.0ms';
+      const sp = S.spark[w];
+      for (let i = 0; i < sp.length; i++) {
+        const b = card.bars[i];
+        b.style.height = (sp[i] ? (sp[i] === 1 ? 100 : 70) : 8) + '%';
+        b.className = sp[i] === 1 ? 'hi' : sp[i] === 2 ? 'v' : '';
+      }
+    }
+
+    // verdict table
+    for (let i = 0; i < N_ROUTES; i++) {
+      const r = S.routes[i], v = vrows[i];
+      const reached = r.state !== 'queued';
+      v.r.classList.toggle('idle', !reached);
+      v.hits.textContent = r.hits;
+      const k = r.verdict ? r.verdict.toLowerCase() : (reached ? 'pending' : 'queued');
+      v.chip.className = 'chip ' + k;
+      v.chip.textContent = r.verdict || (reached ? 'SCANNING' : '—');
+    }
+
+    // heatmap
+    for (let y = 0; y < HEAT_ROWS; y++) {
+      const scan = y < SCAN_LANES;
+      for (let x = 0; x < HEAT_COLS; x++) {
+        const v = S.heat[y][x];
+        heatCells[y][x].style.background = v <= 0.01
+          ? '#0b1110'
+          : scan
+            ? 'rgba(124,192,44,' + (0.18 + v * 0.82) + ')'
+            : 'rgba(29,143,201,' + (0.18 + v * 0.82) + ')';
+      }
+    }
+
+    // metrics
+    $('m-indep').textContent = pad(S.indep || 0);
+    $('m-speed').textContent = pad(S.speed || 0);
+    $('m-crit').textContent  = pad(S.crit || 0);
+    $('m-bill').textContent  = pad(S.billed || 0);
+
+    // status
+    const busy = S.slots.filter(Boolean).length;
+    const scanned = S.routes.filter((r) => r.state === 'done' || r.state === 'verifying' || r.state === 'scanned').length;
+    $('s-workers').textContent = pad0(busy, 2) + '/16';
+    $('s-ctx').textContent     = pad0(S.verifiers.length, 2) + '/' + pad0(S.seen.size, 2);
+    $('s-scan').textContent    = pad(scanned / N_ROUTES * 100, 1, 5) + '%';
+    $('s-vfy').textContent     = pad(S.verifiers.length ? (S.confirmed.length + S.rejected.length) / S.verifiers.length * 100 : 0, 1, 5) + '%';
+    $('s-frame').textContent   = pad0(S.frame % 10000, 4);
+    $('wave').textContent      = 'WAVE ' + S.wave + '/' + S.waves;
+    $('lat').textContent       = pad(rnd(0.3, 0.9), 1, 4);
+    $('f-t').textContent       = 'T-' + pad0(Math.floor(S.t), 2);
+    $('f-stage').textContent   = S.stage.toUpperCase();
+    $('railw').textContent     = busy + ' / 16 W';
+
+    const badge = $('badge');
+    badge.classList.toggle('merge', S.merged);
+    badge.textContent = S.merged
+      ? '[ MERGED ON BARRIER · REPORT WRITTEN ]'
+      : S.verifiers.some((v) => v.ok === null)
+        ? '[ VERIFYING ON FRESH CONTEXT... ]'
+        : '[ SCANNING · FAN OUT ]';
+
+    // tally
+    tallyVals.scanned.textContent   = scanned;
+    tallyVals.hits.textContent      = S.seen.size;
+    tallyVals.confirmed.textContent = S.confirmed.length;
+    tallyVals.rejected.textContent  = S.rejected.length;
+    tallyVals.workers.textContent   = busy + '/16';
+    tallyVals.verifiers.textContent = S.verifiers.length;
+    tallyVals.commits.textContent   = S.commits;
+    tallyVals.tokens.textContent    = Math.round(S.tokens);
+
+    drawRadial();
+    drawCrit();
+  }
+
+  // ----------------------------------------------------------- "and then"
+  const auditBox = $('audit');
+  function rebuildAudit() {
+    auditBox.textContent = '';
+    const pairs = [];
+    for (let k = 0; k < 3; k++) {
+      const i = 1 + ((k * 6) % (N_ROUTES - 2));
+      pairs.push([rid(i) + ' → ' + rid(i + 1), 'no edge', '']);
+    }
+    pairs.push(['audit → verify', 'REAL EDGE', 'real']);
+    pairs.push(['verify → merge', 'REAL EDGE', 'real']);
+    pairs.push(['merge → report', 'SERIAL TAIL', 'tail']);
+    // interleave so each column reads no-edge / real-edge
+    [0, 3, 1, 4, 2, 5].forEach((idx) => {
+      const [a, b, cls] = pairs[idx];
+      const d = el('div', cls);
+      const l = el('span'); l.textContent = a;
+      const r = el('em'); r.textContent = b;
+      d.append(l, r);
+      auditBox.appendChild(d);
+    });
+  }
+
+  // ------------------------------------------------------------ crit path
+  const critBox = $('crit');
+  function drawCrit() {
+    critBox.querySelectorAll('.dot,.seg').forEach((n) => n.remove());
+    const stops = [0, 34, 58, 78, 100];
+    for (let i = 0; i < stops.length - 1; i++) {
+      const seg = el('div', 'seg' + (i >= stops.length - 2 ? ' tail' : ''));
+      seg.style.left = stops[i] + '%';
+      seg.style.width = (stops[i + 1] - stops[i]) + '%';
+      critBox.appendChild(seg);
+    }
+    stops.forEach((p, i) => {
+      const d = el('div', 'dot' + (i >= stops.length - 2 ? ' tail' : ''));
+      d.style.left = p + '%';
+      critBox.appendChild(d);
+    });
+  }
+
+  // -------------------------------------------------------------- radial
+  const cv = $('radial'), ctx = cv.getContext('2d');
+  let CW = 0, CH = 0;
+  function sizeCanvas() {
+    const r = cv.parentElement.getBoundingClientRect();
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    CW = Math.max(200, r.width); CH = Math.max(160, r.height);
+    cv.width = CW * dpr; cv.height = CH * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  new ResizeObserver(sizeCanvas).observe(cv.parentElement);
+
+  function drawRadial() {
+    if (!CW) sizeCanvas();
+    ctx.clearRect(0, 0, CW, CH);
+    const cx = CW * 0.45, cy = CH * 0.50;
+    const R = Math.min(CW * 0.28, CH * 0.33);
+
+    // faint rings
+    ctx.strokeStyle = 'rgba(124,192,44,0.07)';
+    ctx.setLineDash([2, 4]);
+    for (const f of [0.45, 0.72, 1]) {
+      ctx.beginPath(); ctx.arc(cx, cy, R * f, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    // audit nodes — 20 spokes, no edges between them
+    S.routes.forEach((r, i) => {
+      const a = (i / N_ROUTES) * Math.PI * 2 - Math.PI / 2;
+      const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R;
+      r._x = x; r._y = y;
+      const sel = S.sel === i;
+      const live = r.state === 'scanning';
+      ctx.strokeStyle = live ? 'rgba(166,227,39,0.75)'
+        : r.state === 'queued' ? 'rgba(63,80,73,0.28)'
+        : 'rgba(124,192,44,0.22)';
+      ctx.lineWidth = live || sel ? 1.4 : 0.7;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x, y); ctx.stroke();
+
+      const col = r.verdict === 'CONFIRMED' ? '#a6e327'
+        : r.verdict === 'REJECTED' ? '#c8a02a'
+        : r.state === 'scanning' ? '#a6e327'
+        : r.state === 'queued' ? '#2f4718' : '#4f7a2a';
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(x, y, live || sel ? 3.6 : 2.4, 0, Math.PI * 2); ctx.fill();
+
+      if (live) {  // a pulse travelling out along the spoke
+        const p = r.prog;
+        ctx.fillStyle = 'rgba(232,245,208,0.9)';
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(a) * R * p, cy + Math.sin(a) * R * p, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (sel || live) {
+        ctx.fillStyle = 'rgba(107,128,120,0.9)';
+        ctx.font = '7px ' + getComputedStyle(document.body).fontFamily;
+        ctx.fillText(r.id, x + 5, y + 2.5);
+      }
+    });
+
+    // verifier nodes — offset right, fed by a real edge from their finding
+    const vs = S.verifiers.slice(-9);
+    vs.forEach((v, k) => {
+      const spread = Math.max(1, vs.length - 1);
+      const va = (-0.95 + (k / spread) * 1.90);          // ±54° arc, right side
+      const vx = cx + Math.cos(va) * R * 1.44;
+      const vy = cy + Math.sin(va) * R * 1.44;
+      const r = v.route;
+      const alive = r.state === 'verifying';
+      ctx.strokeStyle = alive ? 'rgba(60,201,242,0.7)' : 'rgba(29,143,201,0.2)';
+      ctx.lineWidth = alive ? 1.3 : 0.7;
+      ctx.beginPath(); ctx.moveTo(r._x || cx, r._y || cy); ctx.lineTo(vx, vy); ctx.stroke();
+
+      ctx.fillStyle = v.ok === null ? '#3cc9f2' : v.ok ? '#a6e327' : '#c8a02a';
+      ctx.beginPath(); ctx.arc(vx, vy, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(107,128,120,0.95)';
+      ctx.font = '7px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillText(v.id + ' ' + (v.ok === null ? '···' : v.ok ? 'OK' : 'REJ'), vx + 6, vy + 2.5);
+
+      if (alive) {
+        const p = r.prog;
+        ctx.fillStyle = 'rgba(232,245,208,0.9)';
+        ctx.beginPath();
+        ctx.arc((r._x || cx) + (vx - (r._x || cx)) * p, (r._y || cy) + (vy - (r._y || cy)) * p, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+
+    // hub — the orchestrator, holding no context of its own
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 22);
+    g.addColorStop(0, 'rgba(166,227,39,0.55)');
+    g.addColorStop(1, 'rgba(166,227,39,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = S.merged ? '#e8f5d0' : '#a6e327';
+    ctx.beginPath(); ctx.arc(cx, cy, S.merged ? 7 : 5.5, 0, Math.PI * 2); ctx.fill();
+
+    // the serial tail: the floor no amount of workers can shorten
+    ctx.strokeStyle = 'rgba(200,160,42,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(CW * 0.06, CH * 0.94); ctx.lineTo(CW * 0.94, CH * 0.94);
+    ctx.stroke();
+  }
+
+  // ------------------------------------------------------------- run loop
+  const btn = $('toggle');
+  btn.addEventListener('click', () => {
+    S.running = !S.running;
+    btn.dataset.state = S.running ? 'running' : 'paused';
+    btn.textContent = S.running ? 'running graph' : 'paused';
+    $('f-status').textContent = S.running ? 'CONNECTED' : 'HELD';
+    log('n', S.running ? 'run resumed' : 'run paused — completed agents keep their results');
+  });
+
+  reset();
+  rebuildAudit();
+  sizeCanvas();
+
+  if (REDUCED) {
+    // Render a settled graph in one shot: no animation, same information.
+    for (let i = 0; i < 4000 && !S.done; i++) step(0.05);
+    paint();
+    btn.dataset.state = 'paused';
+    btn.textContent = 'graph settled';
+  } else {
+    let last = performance.now();
+    (function loop(now) {
+      const dt = Math.min(0.1, (now - last) / 1000);
+      last = now;
+      if (S.running) step(dt * 0.95);
+      paint();
+      requestAnimationFrame(loop);
+    })(last);
+    setInterval(() => { $('caret').style.opacity = $('caret').style.opacity === '0' ? '1' : '0'; }, 560);
+  }
+})();
+</script>
