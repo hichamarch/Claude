@@ -1,0 +1,723 @@
+<title>Ashford Bath &amp; Tile</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a pinned full-bleed canvas that builds the room as you scroll, chapter copy on the left,
+   a day-counter rail on the right; then a calm brochure (about, services, process, estimate). */
+:root{
+  --bg:#f2ede5; --surface:#fbf8f3; --ink:#2b1e19; --muted:#6c5f57; --line:#ddd2c4;
+  --accent:#b0132f; --accent-ink:#fff8f5;
+  /* the stage is a picture, so its text colors are the same in both themes */
+  --stage-ink:#2a1d18; --stage-paper:#fffaf4; --stage-shade:rgba(24,12,9,.62);
+  --display:"Fraunces","Iowan Old Style",Georgia,serif;
+  --body:"Instrument Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --gutter-l:max(16px,env(safe-area-inset-left,0px));
+  --gutter-r:max(16px,env(safe-area-inset-right,0px));
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1a1412; --surface:#231b18; --ink:#f0e7dd; --muted:#b2a396; --line:#3a2e29;
+  --accent:#e2465f; --accent-ink:#1a0b0e; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#1a1412; --surface:#231b18; --ink:#f0e7dd; --muted:#b2a396; --line:#3a2e29;
+  --accent:#e2465f; --accent-ink:#1a0b0e; color-scheme:dark }
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font:400 1rem/1.6 var(--body);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+/* ---------- nav ---------- */
+.nav{position:fixed;inset:0 0 auto;z-index:20;display:flex;align-items:center;gap:24px;
+  padding:calc(14px + env(safe-area-inset-top,0px)) var(--gutter-r) 14px var(--gutter-l);
+  color:var(--stage-ink);transition:color .4s,background-color .4s,box-shadow .4s}
+@media (min-width:900px){.nav{padding-left:max(48px,env(safe-area-inset-left,0px));padding-right:max(48px,env(safe-area-inset-right,0px))}}
+.nav[data-tone="light"]{color:var(--stage-paper)}
+.nav.solid{color:var(--ink);background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(10px);box-shadow:0 1px 0 var(--line)}
+.brand{display:flex;flex-direction:column;line-height:1;text-decoration:none;margin-right:auto}
+.brand-name{font:500 1.45rem/1 var(--display);letter-spacing:-.01em}
+.brand-sub{font:500 .62rem/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;margin-top:5px;opacity:.75}
+.nav nav{display:flex;gap:28px;font-size:.9rem}
+.nav nav a{text-decoration:none;opacity:.85}
+.nav nav a:hover{opacity:1;text-decoration:underline;text-underline-offset:4px}
+.btn{display:inline-flex;align-items:center;gap:8px;border:0;cursor:pointer;text-decoration:none;
+  background:var(--accent);color:var(--accent-ink);font:600 .88rem/1 var(--body);padding:11px 18px;border-radius:999px;transition:transform .2s,filter .2s}
+.btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.nav .btn{background:#b0132f;color:#fff8f5}
+.btn.ghost{background:transparent;color:inherit;box-shadow:inset 0 0 0 1.5px currentColor}
+@media (max-width:760px){.nav nav{display:none}}
+
+/* ---------- story (pinned build) ---------- */
+.story{position:relative;height:640vh;background:#1b120f}
+.stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden}
+#scene{position:absolute;inset:0;width:100%;height:100%;display:block}
+.stage::before{content:"";position:absolute;inset:0 0 auto;height:140px;z-index:1;pointer-events:none;
+  background:linear-gradient(rgba(20,10,8,.45),transparent);opacity:var(--top-shade,0);transition:opacity .4s}
+.scrim{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;
+  background:linear-gradient(90deg,var(--stage-shade) 0%,rgba(24,12,9,.25) 38%,transparent 60%)}
+.chapters{position:absolute;inset:0;z-index:2;pointer-events:none}
+.chapter{position:absolute;left:0;top:50%;width:min(34rem,100%);
+  padding-left:max(24px,6vw,env(safe-area-inset-left,0px));padding-right:var(--gutter-r);
+  transform:translateY(-50%);opacity:0;color:var(--stage-paper);will-change:opacity,transform}
+.chapter.ink{color:var(--stage-ink)}
+.chapter.on{pointer-events:auto}
+.eyebrow{font:500 .72rem/1.4 var(--mono);letter-spacing:.2em;text-transform:uppercase;opacity:.8;margin:0 0 18px}
+.chapter h1,.chapter h2{font:500 clamp(2.5rem,5.4vw,4.9rem)/1.02 var(--display);letter-spacing:-.025em;margin:0 0 20px;text-wrap:balance;
+  font-variation-settings:"opsz" 144}
+.chapter:not(.ink) h1,.chapter:not(.ink) h2{text-shadow:0 2px 30px rgba(0,0,0,.25)}
+.chapter p{max-width:27rem;margin:0;font-size:1.02rem;opacity:.9}
+.chapter .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.chapter .btn{background:#b0132f;color:#fff8f5}
+
+.rail{position:absolute;z-index:2;right:max(28px,4vw,env(safe-area-inset-right,0px));top:50%;transform:translateY(-50%);
+  margin:0;padding:18px 20px;list-style:none;color:var(--stage-paper);
+  background:rgba(22,12,9,.38);backdrop-filter:blur(12px);border-radius:14px;min-width:190px}
+.day{font:500 .7rem/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;opacity:.7;margin-bottom:6px}
+.day-n{font:500 2.4rem/1 var(--display);font-variant-numeric:tabular-nums;margin-bottom:14px}
+.day-n small{font:400 .9rem var(--body);opacity:.6;margin-left:4px}
+.rail li{display:flex;justify-content:space-between;gap:16px;font-size:.82rem;padding:5px 0;opacity:.4;transition:opacity .3s}
+.rail li span:last-child{font:400 .72rem/1.6 var(--mono);font-variant-numeric:tabular-nums}
+.rail li.done{opacity:.75}
+.rail li.now{opacity:1;font-weight:600}
+.rail li.now::before{content:"";width:6px;height:6px;border-radius:50%;background:#ff5b74;align-self:center;margin-right:-8px;order:-1}
+.bar{position:absolute;z-index:2;left:0;bottom:0;height:3px;width:100%;transform-origin:left;transform:scaleX(0);background:#d8304c}
+.hint{position:absolute;z-index:2;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+  font:500 .7rem/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--stage-ink);display:flex;flex-direction:column;align-items:center;gap:10px}
+.hint::after{content:"";width:1px;height:34px;background:currentColor;animation:drip 1.8s ease-in-out infinite;transform-origin:top}
+@keyframes drip{0%{transform:scaleY(0)}50%{transform:scaleY(1)}100%{transform:scaleY(1);opacity:0}}
+
+@media (max-width:760px){
+  .scrim{background:linear-gradient(0deg,var(--stage-shade) 0%,rgba(24,12,9,.35) 42%,transparent 66%);opacity:1!important}
+  .chapter,.chapter.ink{top:auto;bottom:calc(64px + env(safe-area-inset-bottom,0px));transform:none;color:var(--stage-paper)}
+  .chapter h1,.chapter h2{font-size:clamp(2.2rem,10vw,3rem)}
+  .chapter p{font-size:.95rem}
+  .rail{top:calc(78px + env(safe-area-inset-top,0px));right:var(--gutter-r);transform:none;min-width:0;padding:10px 14px}
+  .rail li{display:none}
+  .rail .day-n{font-size:1.6rem;margin:0}
+  .hint{display:none}
+}
+@media (prefers-reduced-motion:reduce){.hint::after{animation:none}html{scroll-behavior:auto}}
+
+/* ---------- brochure ---------- */
+.band{padding-block:clamp(72px,10vw,140px);padding-left:var(--gutter-l);padding-right:var(--gutter-r)}
+.wrap{max-width:1180px;margin:0 auto}
+.kicker{font:500 .72rem/1.4 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0 0 16px}
+.band h2{font:500 clamp(2.1rem,4.2vw,3.5rem)/1.05 var(--display);letter-spacing:-.02em;margin:0 0 22px;text-wrap:balance}
+.lede{color:var(--muted);max-width:36rem;margin:0}
+
+.about{display:grid;grid-template-columns:1fr 1fr;gap:clamp(32px,6vw,96px);align-items:center}
+.about > div{min-width:0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:44px;padding-top:28px;border-top:1px solid var(--line)}
+.stat b{display:block;font:500 clamp(1.8rem,3vw,2.5rem)/1 var(--display);font-variant-numeric:tabular-nums;color:var(--accent)}
+.stat span{display:block;margin-top:8px;font-size:.85rem;color:var(--muted);line-height:1.4}
+.photo{position:relative;aspect-ratio:4/5;max-width:100%;border-radius:4px;overflow:hidden;background:#3a2620}
+.photo canvas{position:absolute;inset:0;width:100%;height:100%}
+.photo figcaption{position:absolute;left:14px;bottom:14px;font:500 .68rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#fff8f5;background:rgba(20,10,8,.5);padding:7px 10px;border-radius:3px}
+
+.services{background:var(--surface);border-block:1px solid var(--line)}
+.svc{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(24px,4vw,56px);margin-top:48px}
+.svc article{min-width:0;padding-top:22px;border-top:2px solid var(--ink)}
+.svc h3{font:500 1.4rem/1.2 var(--display);margin:0 0 10px}
+.svc p{margin:0;color:var(--muted);font-size:.95rem}
+
+.steps{list-style:none;margin:48px 0 0;padding:0;display:grid;grid-template-columns:repeat(5,1fr);gap:0;counter-reset:s}
+.steps li{min-width:0;padding:22px 20px 0 0;border-top:1px solid var(--line);position:relative;counter-increment:s}
+.steps li::before{content:"";position:absolute;top:-5px;left:0;width:9px;height:9px;border-radius:50%;background:var(--accent)}
+.steps .when{font:500 .72rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.steps h3{font:500 1.15rem/1.25 var(--display);margin:10px 0 8px}
+.steps p{margin:0;font-size:.9rem;color:var(--muted)}
+
+.estimate{display:grid;grid-template-columns:1fr 1.1fr;gap:clamp(32px,6vw,96px)}
+.estimate > div{min-width:0}
+form{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field.full{grid-column:1/-1}
+label{font:500 .72rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px;width:100%}
+textarea{min-height:110px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+.form-foot{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:16px}
+.status{font-size:.9rem;color:var(--muted);margin:0}
+.contact{margin-top:32px;display:grid;gap:4px;font-size:.95rem}
+.contact span{color:var(--muted)}
+
+footer{background:#b0132f;color:#fff8f5;padding-block:22px calc(22px + env(safe-area-inset-bottom,0px));padding-left:var(--gutter-l);padding-right:var(--gutter-r)}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-between;align-items:center;font-size:.85rem}
+footer .brand-name{font-size:1.2rem}
+
+@media (max-width:900px){
+  .about,.estimate{grid-template-columns:1fr}
+  .svc{grid-template-columns:1fr}
+  .steps{grid-template-columns:1fr;gap:0}
+  .steps li{padding:0 0 28px 26px;border-top:0;border-left:1px solid var(--line)}
+  .steps li::before{top:4px;left:-5px}
+}
+@media (max-width:520px){
+  form{grid-template-columns:1fr}
+  .stats{gap:14px}
+}
+</style>
+
+<header class="nav" id="nav" data-tone="ink">
+  <a class="brand" href="#top" aria-label="Ashford Bath and Tile, back to top">
+    <span class="brand-name">Ashford</span><span class="brand-sub">Bath &amp; Tile</span>
+  </a>
+  <nav aria-label="Primary"><a href="#services">Services</a><a href="#process">Process</a><a href="#about">About</a></nav>
+  <a class="btn" href="#estimate">Free estimate</a>
+</header>
+
+<main>
+<section class="story" id="top" aria-label="A bathroom built from bare drywall to handover">
+  <div class="stage" id="stage">
+    <canvas id="scene" aria-hidden="true"></canvas>
+    <div class="scrim" id="scrim"></div>
+    <div class="chapters">
+      <article class="chapter ink" data-in="-1" data-out=".17">
+        <p class="eyebrow">Ashford Bath &amp; Tile · Renovations</p>
+        <h1>Bathrooms built to be lived in.</h1>
+        <p>One crew takes your bathroom from bare drywall to the last towel hook, on one written schedule. Scroll to watch a three-week build.</p>
+      </article>
+      <article class="chapter" data-in=".20" data-out=".38">
+        <p class="eyebrow">Days 4–9 · Tile &amp; stone</p>
+        <h2>Stone where the water goes.</h2>
+        <p>Full-height porcelain slab in the shower, waterproofed to the ceiling, with a recessed niche and a linear drain set to a 1.5% fall.</p>
+      </article>
+      <article class="chapter" data-in=".41" data-out=".55">
+        <p class="eyebrow">Days 10–12 · Millwork</p>
+        <h2>Warm wood, built in.</h2>
+        <p>Walnut-stained fluted panels hide the toilet carrier and frame a lit shelf. We build them in our own shop and fit them to the millimetre.</p>
+      </article>
+      <article class="chapter" data-in=".58" data-out=".76">
+        <p class="eyebrow">Days 13–17 · Vanity &amp; lighting</p>
+        <h2>Floating vanity, lit mirror.</h2>
+        <p>A wall-hung vanity keeps the floor clear for cleaning. The mirror, niche and toe-kick run on dimmable 2700K LED.</p>
+      </article>
+      <article class="chapter" data-in=".81" data-out="2">
+        <p class="eyebrow">Day 21 · Handover</p>
+        <h2>Ready on the day we said.</h2>
+        <p>Fixed-price quote, a written schedule, and a two-year workmanship warranty on everything we build.</p>
+        <div class="ctas"><a class="btn" href="#estimate">Book a consultation</a><a class="btn ghost" href="#process">See our process</a></div>
+      </article>
+    </div>
+    <div class="rail" id="rail" aria-hidden="true">
+      <div class="day">Build day</div>
+      <div class="day-n"><span id="dayN">1</span><small>/ 21</small></div>
+      <ol style="list-style:none;margin:0;padding:0">
+        <li data-at="0"><span>Rough-in</span><span>D1</span></li>
+        <li data-at=".12"><span>Tile &amp; stone</span><span>D4</span></li>
+        <li data-at=".28"><span>Plaster</span><span>D8</span></li>
+        <li data-at=".36"><span>Millwork</span><span>D10</span></li>
+        <li data-at=".50"><span>Vanity &amp; mirror</span><span>D13</span></li>
+        <li data-at=".62"><span>Lighting</span><span>D16</span></li>
+        <li data-at=".70"><span>Fixtures</span><span>D18</span></li>
+        <li data-at=".86"><span>Handover</span><span>D21</span></li>
+      </ol>
+    </div>
+    <div class="hint" id="hint">Scroll to build</div>
+    <div class="bar" id="bar"></div>
+  </div>
+</section>
+
+<section class="band" id="about">
+  <div class="wrap about">
+    <div>
+      <p class="kicker">About us</p>
+      <h2>One team, start to finish.</h2>
+      <p class="lede">Plumbers, tilers, electricians and cabinetmakers on one payroll, run by one project lead you can call. No subcontractor hand-offs, no gaps in the schedule, and one invoice at the end.</p>
+      <div class="stats">
+        <div class="stat"><b>650+</b><span>bathrooms finished since 2012</span></div>
+        <div class="stat"><b>3 weeks</b><span>typical full renovation</span></div>
+        <div class="stat"><b>2 years</b><span>workmanship warranty</span></div>
+      </div>
+    </div>
+    <figure class="photo" style="margin:0">
+      <canvas id="still" aria-label="The finished bathroom: red stone shower, lit arched mirror and walnut panels"></canvas>
+      <figcaption>Ensuite · Day 21</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="band services" id="services">
+  <div class="wrap">
+    <p class="kicker">Services</p>
+    <h2>What we build</h2>
+    <div class="svc">
+      <article><h3>Full renovations</h3><p>Demolition to handover: plumbing, electrical, waterproofing, tile, millwork and paint, all by our own crew.</p></article>
+      <article><h3>Showers &amp; tile</h3><p>Curbless showers, slab walls, heated floors and membrane waterproofing tested before a single tile goes on.</p></article>
+      <article><h3>Custom millwork</h3><p>Floating vanities, fluted panels and recessed storage, built in our shop to your room's exact dimensions.</p></article>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="process">
+  <div class="wrap">
+    <p class="kicker">Process</p>
+    <h2>Twenty-one working days, in writing</h2>
+    <p class="lede">Every quote comes with a day-by-day schedule. Here is how a typical ensuite runs.</p>
+    <ol class="steps">
+      <li><span class="when">Week 0</span><h3>Site visit &amp; fixed quote</h3><p>We measure, check the plumbing, and send a fixed price within five days.</p></li>
+      <li><span class="when">Days 1–3</span><h3>Demolition &amp; rough-in</h3><p>Strip to studs, move drains and supply lines, add circuits and blocking.</p></li>
+      <li><span class="when">Days 4–9</span><h3>Waterproofing &amp; tile</h3><p>Membrane, flood test, then slab walls, floor tile and the shower niche.</p></li>
+      <li><span class="when">Days 10–17</span><h3>Millwork &amp; lighting</h3><p>Panels, vanity, mirror and LED, installed and wired by our own trades.</p></li>
+      <li><span class="when">Days 18–21</span><h3>Fixtures &amp; handover</h3><p>Toilet, glass and trim, a full clean, and a walkthrough with your warranty.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="band services" id="estimate">
+  <div class="wrap estimate">
+    <div>
+      <p class="kicker">Free estimate</p>
+      <h2>Tell us about your bathroom</h2>
+      <p class="lede">We reply within one business day to book a site visit. Measurements and photos help, but they are optional.</p>
+      <div class="contact"><span>Office</span><b>(555) 014-2290</b><b>hello@ashfordbath.example</b></div>
+    </div>
+    <form id="quote" novalidate>
+      <div class="field"><label for="q-name">Name</label><input id="q-name" name="name" autocomplete="name" required placeholder="Jordan Lee"></div>
+      <div class="field"><label for="q-area">Neighbourhood</label><input id="q-area" name="area" placeholder="Riverside"></div>
+      <div class="field"><label for="q-room">Room</label>
+        <select id="q-room" name="room"><option>Ensuite</option><option>Main bathroom</option><option>Powder room</option><option>Basement bath</option></select></div>
+      <div class="field"><label for="q-size">Approx. size</label>
+        <select id="q-size" name="size"><option>Under 40 sq ft</option><option selected>40–80 sq ft</option><option>Over 80 sq ft</option></select></div>
+      <div class="field full"><label for="q-notes">What would you change?</label><textarea id="q-notes" name="notes" placeholder="Walk-in shower instead of the tub, heated floor, more storage."></textarea></div>
+      <div class="form-foot"><button class="btn" type="submit">Request estimate</button><p class="status" id="status" role="status"></p></div>
+    </form>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span class="brand-name">Ashford <span style="font:500 .7rem var(--mono);letter-spacing:.2em;text-transform:uppercase">Bath &amp; Tile</span></span>
+    <span>Concept site. Every image on this page is drawn in code.</span>
+  </div>
+</footer>
+
+<script>
+(() => {
+/* Optional: swap the procedural room for a real image sequence (e.g. frames exported from a
+   render or a generated video). Publish the frames next to this page and set, for example:
+   const SEQUENCE = { count: 180, src: i => `frames/${String(i + 1).padStart(4, '0')}.webp` }; */
+const SEQUENCE = null;
+
+const W = 1600, H = 900, VPX = 800, VPY = 410;
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const seg = (p, a, b) => clamp((p - a) / (b - a));
+const ease = t => t * t * (3 - 2 * t);
+const lerp = (a, b, t) => a + (b - a) * t;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const R = rng(7);
+
+const K = (() => {
+  const k = Math.max(innerWidth / W, innerHeight / H) * Math.min(devicePixelRatio || 1, 2);
+  return clamp(k, 1, innerWidth < 760 ? 1.2 : 1.5);
+})();
+function layer() {
+  const c = document.createElement('canvas'); c.width = Math.round(W * K); c.height = Math.round(H * K);
+  const x = c.getContext('2d'); x.setTransform(K, 0, 0, K, 0, 0); x.lineCap = 'round'; x.lineJoin = 'round';
+  return [c, x];
+}
+function poly(x, pts) { x.beginPath(); pts.forEach(([a, b], i) => i ? x.lineTo(a, b) : x.moveTo(a, b)); x.closePath(); }
+function ell(x, cx, cy, rx, ry) { x.beginPath(); x.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); }
+function rr(x, X, Y, w, h, r) { x.beginPath(); x.roundRect(X, Y, w, h, r); }
+function pill(x, cx, y0, y1, w) { const r = w / 2; x.beginPath(); x.moveTo(cx - r, y0 + r); x.arc(cx, y0 + r, r, Math.PI, 0); x.lineTo(cx + r, y1 - r); x.arc(cx, y1 - r, r, 0, Math.PI); x.closePath(); }
+function lin(x, x0, y0, x1, y1, stops) { const g = x.createLinearGradient(x0, y0, x1, y1); stops.forEach(([o, c]) => g.addColorStop(o, c)); return g; }
+function rad(x, cx, cy, r, stops) { const g = x.createRadialGradient(cx, cy, 0, cx, cy, r); stops.forEach(([o, c]) => g.addColorStop(o, c)); return g; }
+
+// Room in one-point perspective. Back wall is depth Z=1; X,Y are offsets from the vanishing point.
+const P = (X, Y, Z) => [VPX + X / Z, VPY + Y / Z];
+const CEIL = [[0, 0], [W, 0], [1270, 120], [330, 120]];
+const FLOOR = [[0, H], [330, 700], [1270, 700], [W, H]];
+const LWALL = [[0, 0], [330, 120], [330, 700], [0, H]];
+const RWALL = [[W, 0], [1270, 120], [1270, 700], [W, H]];
+const BACK = [[330, 120], [1270, 120], [1270, 700], [330, 700]];
+const LIGHTS = [P(-160, -290, .8), P(160, -290, .8), P(-168, -290, .95), P(168, -290, .95)];
+
+const noise = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 160; const x = c.getContext('2d');
+  const d = x.createImageData(160, 160);
+  for (let i = 0; i < d.data.length; i += 4) { const v = 110 + R() * 145; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 40; }
+  x.putImageData(d, 0, 0); return c;
+})();
+function grain(x, shape, a) { x.save(); shape(); x.clip(); x.globalAlpha = a; x.fillStyle = x.createPattern(noise, 'repeat'); x.fillRect(0, 0, W, H); x.restore(); }
+function edgeShade(x, a = .14) {
+  x.fillStyle = lin(x, 330, 0, 380, 0, [[0, `rgba(40,25,15,${a})`], [1, 'rgba(40,25,15,0)']]); x.fillRect(330, 120, 50, 580);
+  x.fillStyle = lin(x, 1270, 0, 1220, 0, [[0, `rgba(40,25,15,${a})`], [1, 'rgba(40,25,15,0)']]); x.fillRect(1220, 120, 50, 580);
+  x.fillStyle = lin(x, 0, 120, 0, 160, [[0, `rgba(40,25,15,${a})`], [1, 'rgba(40,25,15,0)']]); x.fillRect(330, 120, 940, 40);
+  x.fillStyle = lin(x, 0, 700, 0, 660, [[0, `rgba(40,25,15,${a})`], [1, 'rgba(40,25,15,0)']]); x.fillRect(330, 660, 940, 40);
+}
+const lwTop = X => 120 * X / 330, lwBot = X => H - 200 * X / 330;
+const rwTop = X => 120 * (W - X) / 330, rwBot = X => H - 200 * (W - X) / 330;
+
+/* ---------- layers ---------- */
+const L = {};
+
+function buildRaw() {
+  const [c, x] = layer();
+  const fills = [[CEIL, '#e9e6e0'], [LWALL, '#d6d1c8'], [RWALL, '#ddd8cf'], [BACK, '#e4e0d7'], [FLOOR, '#a7a199']];
+  fills.forEach(([s, f]) => { poly(x, s); x.fillStyle = f; x.fill(); });
+  // concrete floor
+  for (let i = 0; i < 90; i++) { const px = R() * W, py = 700 + R() * 200; ell(x, px, py, 20 + R() * 90, 4 + R() * 14); x.fillStyle = `rgba(${R() < .5 ? '70,66,60' : '200,196,188'},${.05 + R() * .08})`; x.fill(); }
+  grain(x, () => poly(x, FLOOR), .9);
+  // moisture board, lower right of back wall
+  x.fillStyle = '#a9c0a3'; x.fillRect(1035, 410, 235, 290);
+  // taped and mudded seams
+  const mud = (x0, y0, x1, y1, w) => { x.strokeStyle = 'rgba(250,248,243,.85)'; x.lineWidth = w; x.beginPath(); x.moveTo(x0, y0); x.lineTo(x1, y1); x.stroke();
+    const n = Math.hypot(x1 - x0, y1 - y0) / 28; for (let i = 0; i < n; i++) { const t = i / n; ell(x, lerp(x0, x1, t) + (R() - .5) * w, lerp(y0, y1, t), w * (.5 + R()), w * (.4 + R() * .8)); x.fillStyle = 'rgba(252,250,246,.55)'; x.fill(); } };
+  [565, 800, 1035].forEach(X => mud(X, 120, X, 700, 15));
+  mud(330, 410, 1270, 410, 13); mud(1150, 410, 1150, 700, 12);
+  [110, 225].forEach(X => mud(X, lwTop(X), X, lwBot(X), 16 * (1.2 - X / 600)));
+  [1375, 1490].forEach(X => mud(X, rwTop(X), X, rwBot(X), 16 * (1.2 - (W - X) / 600)));
+  mud(0, VPY, 330, VPY, 12); mud(1270, VPY, W, VPY, 12);
+  [-235, 0, 235].forEach(X => { const [a, b] = P(X, -290, 1), [c2, d] = P(X, -290, .3); mud(c2, d, a, b, 10); });
+  // screws
+  x.fillStyle = 'rgba(255,255,255,.75)';
+  for (let X = 350; X < 1270; X += 58) for (let Y = 150; Y < 690; Y += 48) if (Math.abs(X - 565) > 14 && Math.abs(X - 800) > 14 && Math.abs(X - 1035) > 14) { ell(x, X + (R() - .5) * 6, Y, 2.4, 2.4); x.fill(); }
+  grain(x, () => { x.beginPath(); [CEIL, LWALL, RWALL, BACK].forEach(s => { s.forEach(([a, b], i) => i ? x.lineTo(a, b) : x.moveTo(a, b)); x.closePath(); }); }, .5);
+  edgeShade(x, .16);
+  // rough-in: ceiling holes and hanging wire
+  LIGHTS.forEach(([lx, ly], i) => {
+    ell(x, lx, ly, 15, 4.5); x.fillStyle = '#1d1a18'; x.fill();
+    x.strokeStyle = i % 2 ? '#2a2826' : '#7a5a2a'; x.lineWidth = 2.2; x.beginPath(); x.moveTo(lx, ly);
+    x.bezierCurveTo(lx + 10, ly + 60, lx - 26, ly + 110, lx + 6 + i * 4, ly + 150 + i * 20); x.stroke();
+  });
+  const loop = (cx, cy, s) => { x.strokeStyle = '#d8d2c4'; x.lineWidth = 2.6; x.beginPath(); x.moveTo(cx, cy); x.bezierCurveTo(cx - 20 * s, cy + 60 * s, cx + 26 * s, cy + 90 * s, cx + 4, cy + 40 * s); x.bezierCurveTo(cx - 12, cy + 20 * s, cx + 18, cy + 70 * s, cx + 2, cy + 120 * s); x.stroke(); ell(x, cx, cy, 6, 6); x.fillStyle = '#1d1a18'; x.fill(); };
+  loop(757, 255, 1); loop(1115, 300, .9); loop(640, 125, 1.2); loop(875, 125, 1.2);
+  // plumbing stubs
+  const stub = (sx, sy, col, r = 6) => { ell(x, sx, sy, r, r); x.fillStyle = col; x.fill(); x.strokeStyle = 'rgba(0,0,0,.35)'; x.lineWidth = 1; x.stroke(); };
+  stub(430, 470, '#b8743e'); stub(462, 470, '#b8743e'); stub(445, 250, '#b8743e', 5);
+  stub(735, 585, '#c9c9c4'); stub(780, 585, '#c9c9c4'); stub(757, 610, '#f0efe9', 10);
+  stub(1115, 600, '#f3f2ee', 18); stub(1160, 640, '#c9c9c4');
+  // tile boxes waiting in the corner
+  const box = (bx, by, bw, bh, d) => {
+    poly(x, [[bx, by], [bx + bw, by], [bx + bw - d, by - d * .45], [bx - d, by - d * .45]]); x.fillStyle = '#c4a57a'; x.fill();
+    x.fillStyle = '#a8865a'; x.fillRect(bx, by, bw, bh);
+    poly(x, [[bx, by], [bx - d, by - d * .45], [bx - d, by + bh - d * .45], [bx, by + bh]]); x.fillStyle = '#8f7049'; x.fill();
+    x.fillStyle = 'rgba(255,255,255,.55)'; x.fillRect(bx + 14, by + 12, bw * .45, 6);
+  };
+  box(1350, 790, 150, 60, 40); box(1362, 736, 130, 54, 36); box(1180, 740, 110, 46, 28);
+  x.fillStyle = 'rgba(40,35,30,.2)'; ell(x, 1420, 856, 120, 12); x.fill();
+  // flat, cool site lighting
+  x.fillStyle = 'rgba(160,172,186,.12)'; x.fillRect(0, 0, W, H);
+  L.raw = c;
+}
+
+function buildFloor() {
+  const [c, x] = layer();
+  x.save(); poly(x, FLOOR); x.clip();
+  const Zs = [1, .87, .74, .61, .48];
+  for (let r = 0; r < Zs.length - 1; r++) for (let k = 0; k < 8; k++) {
+    const X0 = -470 + k * 117.5, X1 = X0 + 117.5, Za = Zs[r], Zb = Zs[r + 1];
+    poly(x, [P(X0, 290, Za), P(X1, 290, Za), P(X1, 290, Zb), P(X0, 290, Zb)]);
+    const l = 86 + R() * 4; x.fillStyle = `hsl(36 ${18 + R() * 6}% ${l}%)`; x.fill();
+    x.strokeStyle = 'rgba(160,140,120,.55)'; x.lineWidth = 1.4; x.stroke();
+  }
+  grain(x, () => poly(x, FLOOR), .35);
+  x.fillStyle = lin(x, 0, 700, 0, 900, [[0, 'rgba(60,40,25,.18)'], [.25, 'rgba(60,40,25,0)'], [1, 'rgba(255,255,255,.08)']]); x.fillRect(0, 700, W, 200);
+  x.strokeStyle = '#3b3632'; x.lineWidth = 3; x.beginPath(); x.moveTo(345, 708); x.lineTo(548, 708); x.stroke();
+  x.restore();
+  L.floor = c;
+}
+
+function buildPlaster() {
+  const [c, x] = layer();
+  [[CEIL, '#efe6d9'], [RWALL, '#dfd1bd']].forEach(([s, f]) => { poly(x, s); x.fillStyle = f; x.fill(); });
+  x.fillStyle = '#e8dccb'; x.fillRect(330, 120, 940, 580);
+  x.fillStyle = lin(x, 0, 120, 0, 700, [[0, 'rgba(255,255,255,.18)'], [1, 'rgba(120,90,60,.08)']]); x.fillRect(330, 120, 940, 580);
+  grain(x, () => { x.beginPath(); x.rect(330, 120, 940, 580); poly(x, CEIL); }, .22);
+  grain(x, () => poly(x, RWALL), .22);
+  edgeShade(x, .12);
+  LIGHTS.forEach(([lx, ly]) => { ell(x, lx, ly, 16, 4.8); x.fillStyle = '#c7baa7'; x.fill(); ell(x, lx, ly + .5, 11, 3.2); x.fillStyle = '#f7f2ea'; x.fill(); });
+  L.plaster = c;
+}
+
+function buildMarble() {
+  const T = document.createElement('canvas'); T.width = 1400; T.height = 900; const t = T.getContext('2d'); t.lineCap = 'round';
+  t.fillStyle = lin(t, 0, 0, 0, 900, [[0, '#7c3029'], [.5, '#6a2822'], [1, '#56201b']]); t.fillRect(0, 0, 1400, 900);
+  for (let i = 0; i < 260; i++) { const cx = R() * 1400, cy = R() * 900, r = 40 + R() * 170; t.fillStyle = rad(t, cx, cy, r, [[0, R() < .55 ? 'rgba(160,72,60,.16)' : 'rgba(40,10,8,.18)'], [1, 'rgba(0,0,0,0)']]); t.fillRect(cx - r, cy - r, r * 2, r * 2); }
+  const vein = (x0, y0, ang, steps, w, a, depth) => {
+    let px = x0, py = y0; t.beginPath(); t.moveTo(px, py);
+    const pts = [];
+    for (let i = 0; i < steps; i++) { ang += (R() - .5) * .55; px += Math.cos(ang) * 7; py += Math.sin(ang) * 7; t.lineTo(px, py); pts.push([px, py, ang]); }
+    t.strokeStyle = `rgba(244,224,214,${a * .25})`; t.lineWidth = w * 3.5; t.stroke();
+    t.strokeStyle = `rgba(246,228,218,${a})`; t.lineWidth = w; t.stroke();
+    if (depth < 2) pts.forEach(([bx, by, ba]) => { if (R() < .025) vein(bx, by, ba + (R() < .5 ? .9 : -.9), 10 + R() * 40, w * .55, a * .8, depth + 1); });
+  };
+  for (let i = 0; i < 34; i++) vein(R() * 1400, R() * 900, (R() < .5 ? -.7 : 2.4) + (R() - .5) * .8, 40 + R() * 160, .6 + R() * 1.9, .35 + R() * .5, 0);
+  const tg = t.createPattern(noise, 'repeat'); t.globalAlpha = .5; t.fillStyle = tg; t.fillRect(0, 0, 1400, 900); t.globalAlpha = 1;
+
+  const [c, x] = layer();
+  // left wall: draw the slab in thin vertical strips so it foreshortens with depth
+  const zFront = 470 / 800;
+  for (let sx = 0; sx < 330; sx += 2) {
+    const Z = 470 / (800 - sx), u = (Z - zFront) / (1 - zFront) * 900;
+    x.drawImage(T, Math.min(899, u), 0, 2.5, 900, sx, lwTop(sx), 2.6, lwBot(sx) - lwTop(sx));
+  }
+  x.fillStyle = lin(x, 0, 0, 330, 0, [[0, 'rgba(20,6,4,.35)'], [1, 'rgba(20,6,4,0)']]); poly(x, LWALL); x.fill();
+  x.drawImage(T, 900, 0, 360, 900, 330, 120, 230, 580);
+  x.fillStyle = lin(x, 330, 0, 380, 0, [[0, 'rgba(15,4,2,.45)'], [1, 'rgba(15,4,2,0)']]); x.fillRect(330, 120, 50, 580);
+  x.strokeStyle = 'rgba(15,4,2,.6)'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(330, 120); x.lineTo(330, 700); x.moveTo(445, 120); x.lineTo(445, 700); x.stroke();
+  // niche
+  x.fillStyle = '#2a110e'; x.fillRect(372, 328, 150, 52);
+  x.fillStyle = 'rgba(255,255,255,.08)'; x.fillRect(372, 376, 150, 4);
+  // mixer
+  ell(x, 470, 455, 15, 15); x.fillStyle = '#151312'; x.fill(); x.strokeStyle = '#151312'; x.lineWidth = 5; x.beginPath(); x.moveTo(470, 455); x.lineTo(492, 448); x.stroke();
+  // rain head on a ceiling drop
+  const [hx, hy] = P(-330, -290, .85);
+  x.strokeStyle = '#141211'; x.lineWidth = 5; x.beginPath(); x.moveTo(hx, hy); x.lineTo(hx, 150); x.stroke();
+  ell(x, hx, 154, 48, 8); x.fillStyle = '#141211'; x.fill();
+  L.marble = c;
+}
+
+function buildGlass() {
+  const [c, x] = layer();
+  const a = P(-240, -290, 1), b = P(-240, 290, 1), cc = P(-240, 290, .62), d = P(-240, -290, .62);
+  poly(x, [a, b, cc, d]); x.fillStyle = 'rgba(200,222,226,.10)'; x.fill();
+  x.save(); poly(x, [a, b, cc, d]); x.clip();
+  x.fillStyle = lin(x, 420, 100, 560, 500, [[0, 'rgba(255,255,255,0)'], [.45, 'rgba(255,255,255,.16)'], [.55, 'rgba(255,255,255,0)']]); x.fillRect(380, 0, 200, H);
+  x.restore();
+  x.strokeStyle = '#121010'; x.lineWidth = 7;
+  x.beginPath(); x.moveTo(...a); x.lineTo(...b); x.moveTo(...d); x.lineTo(...cc); x.moveTo(...a); x.lineTo(...d); x.moveTo(...b); x.lineTo(...cc); x.stroke();
+  x.lineWidth = 5; const m1 = P(-240, -60, .8), m2 = P(-240, -60, .62); x.beginPath(); x.moveTo(...m1); x.lineTo(...m2); x.stroke();
+  L.glass = c;
+}
+
+const SLATS = [];
+function buildSlats() {
+  const [c, x] = layer();
+  x.fillStyle = '#331810'; x.fillRect(960, 120, 310, 580);
+  for (let sx = 962; sx < 1268; sx += 24) {
+    SLATS.push(sx);
+    x.fillStyle = lin(x, sx, 0, sx + 18, 0, [[0, '#6f3820'], [.35, '#9a5534'], [.7, '#8c4a2c'], [1, '#64321c']]); x.fillRect(sx, 120, 18, 580);
+    x.strokeStyle = 'rgba(50,20,10,.28)'; x.lineWidth = .8;
+    for (let g = 0; g < 4; g++) { const gx = sx + 3 + R() * 12; x.beginPath(); x.moveTo(gx, 120); for (let y = 120; y <= 700; y += 40) x.lineTo(gx + Math.sin(y * .02 + g) * 1.4, y); x.stroke(); }
+  }
+  x.fillStyle = '#2a120a'; x.fillRect(972, 360, 288, 38);
+  x.fillStyle = '#8c4e30'; x.fillRect(972, 394, 288, 5);
+  edgeShade(x, .2);
+  L.slats = c;
+}
+
+function buildVanity() {
+  const [c, x] = layer();
+  x.fillStyle = rad(x, 757, 650, 230, [[0, 'rgba(60,35,20,.22)'], [1, 'rgba(60,35,20,0)']]); x.save(); x.translate(757, 650); x.scale(1, .18); x.translate(-757, -650); x.fillRect(527, 420, 460, 460); x.restore();
+  const Zf = .85, tl = P(-200, 110, 1), tr = P(130, 110, 1), fl = P(-200, 110, Zf), fr = P(130, 110, Zf);
+  const th = 20 / Zf, bot = fl[1] + th + 56;
+  // cabinet
+  x.fillStyle = lin(x, 0, fl[1] + th, 0, bot, [[0, '#7a4226'], [1, '#5c2f19']]); x.fillRect(fl[0] + 6, fl[1] + th, fr[0] - fl[0] - 12, bot - fl[1] - th);
+  x.fillStyle = 'rgba(20,8,4,.5)'; x.fillRect((fl[0] + fr[0]) / 2 - 1, fl[1] + th + 4, 2, bot - fl[1] - th - 8);
+  for (let gx = fl[0] + 14; gx < fr[0] - 10; gx += 7) { x.fillStyle = 'rgba(40,16,6,.25)'; x.fillRect(gx, fl[1] + th, 1, bot - fl[1] - th); }
+  // stone top
+  poly(x, [tl, tr, fr, fl]); x.fillStyle = '#f3eee6'; x.fill();
+  x.fillStyle = '#e2d9cc'; x.fillRect(fl[0], fl[1], fr[0] - fl[0], th);
+  x.fillStyle = 'rgba(255,255,255,.6)'; x.fillRect(fl[0], fl[1], fr[0] - fl[0], 1.5);
+  // vessel basin
+  const bx = 757, by = 528;
+  x.fillStyle = lin(x, bx - 60, 0, bx + 60, 0, [[0, '#8f2f27'], [.4, '#c4523f'], [1, '#86291f']]);
+  x.beginPath(); x.ellipse(bx, by, 62, 11, 0, Math.PI, 0, true); x.lineTo(bx + 52, by + 24); x.quadraticCurveTo(bx, by + 34, bx - 52, by + 24); x.closePath(); x.fill();
+  ell(x, bx, by, 62, 11); x.fillStyle = '#a63c30'; x.fill(); ell(x, bx, by + 1, 54, 8); x.fillStyle = '#6e221b'; x.fill();
+  // wall spout
+  ell(x, bx, 462, 9, 9); x.fillStyle = '#151312'; x.fill();
+  x.strokeStyle = '#151312'; x.lineWidth = 5; x.beginPath(); x.moveTo(bx, 462); x.lineTo(bx, 470); x.quadraticCurveTo(bx, 486, bx, 498); x.stroke();
+  L.vanity = c;
+}
+
+function buildMirror() {
+  const [c, x] = layer();
+  pill(x, 757, 240, 476, 124); x.fillStyle = '#cfc4b3'; x.fill();
+  x.save(); pill(x, 757, 246, 470, 112); x.clip();
+  x.fillStyle = lin(x, 0, 246, 0, 470, [[0, '#ebe2d4'], [.6, '#d8cbb8'], [1, '#c3b39d']]); x.fillRect(690, 240, 140, 240);
+  x.fillStyle = '#9b5a38'; x.fillRect(700, 330, 16, 150); x.fillRect(722, 330, 16, 150);
+  x.fillStyle = lin(x, 700, 250, 820, 470, [[0, 'rgba(255,255,255,0)'], [.42, 'rgba(255,255,255,.35)'], [.5, 'rgba(255,255,255,0)']]); x.fillRect(690, 240, 140, 240);
+  x.restore();
+  [640, 875].forEach(px => {
+    x.strokeStyle = '#2a2420'; x.lineWidth = 1.6; x.beginPath(); x.moveTo(px, 108); x.lineTo(px, 330); x.stroke();
+    x.fillStyle = lin(x, px - 11, 0, px + 11, 0, [[0, '#8a5530'], [.45, '#c98d55'], [1, '#7c4826']]);
+    x.beginPath(); x.moveTo(px - 8, 330); x.lineTo(px + 8, 330); x.lineTo(px + 11, 388); x.lineTo(px - 11, 388); x.closePath(); x.fill();
+  });
+  L.mirror = c;
+}
+
+function buildToilet() {
+  const [c, x] = layer();
+  x.fillStyle = '#121010'; rr(x, 1092, 450, 48, 28, 3); x.fill(); x.fillStyle = '#3a3633'; x.fillRect(1114, 454, 1.5, 20);
+  x.fillStyle = rad(x, 1180, 750, 110, [[0, 'rgba(50,25,15,.35)'], [1, 'rgba(50,25,15,0)']]); x.save(); x.translate(1150, 735); x.scale(1, .15); x.translate(-1150, -735); x.fillRect(1030, 625, 240, 240); x.restore();
+  // wall-hung pan, seen slightly from its left side
+  const w0 = P(285, 140, 1), w1 = P(285, 196, 1), f0 = P(285, 142, .87), f1 = P(285, 200, .87), fw = 66;
+  x.fillStyle = '#8a3628';
+  x.beginPath(); x.moveTo(...w0); x.lineTo(f0[0] + 8, f0[1]); x.quadraticCurveTo(f0[0] - 6, f1[1] - 16, f0[0] + 12, f1[1]); x.lineTo(w1[0], w1[1]); x.closePath(); x.fill();
+  x.fillStyle = lin(x, f0[0], 0, f0[0] + fw, 0, [[0, '#a5463a'], [.45, '#c75d47'], [1, '#9a4033']]);
+  x.beginPath(); x.moveTo(f0[0] + 4, f0[1]); x.lineTo(f0[0] + fw - 4, f0[1]); x.quadraticCurveTo(f0[0] + fw + 2, f1[1] - 18, f0[0] + fw - 14, f1[1]);
+  x.lineTo(f0[0] + 14, f1[1]); x.quadraticCurveTo(f0[0] - 2, f1[1] - 18, f0[0] + 4, f0[1]); x.fill();
+  poly(x, [[w0[0], w0[1] - 6], [f0[0] + 2, f0[1] - 6], [f0[0] + fw, f0[1] - 6], [f0[0] + fw, f0[1]], [f0[0] + 2, f0[1]], [w0[0], w0[1]]]); x.fillStyle = '#b8533f'; x.fill();
+  L.toilet = c;
+}
+
+function buildPlant() {
+  const [c, x] = layer();
+  const px = 1420, base = 858, top = 740;
+  x.fillStyle = rad(x, px, base, 120, [[0, 'rgba(40,25,15,.4)'], [1, 'rgba(40,25,15,0)']]); x.save(); x.translate(px, base); x.scale(1, .14); x.translate(-px, -base); x.fillRect(px - 120, base - 120, 240, 240); x.restore();
+  x.strokeStyle = '#4b3424'; x.lineWidth = 7; x.beginPath(); x.moveTo(px, top); x.bezierCurveTo(px - 10, 660, px + 12, 620, px - 4, 560); x.stroke();
+  x.lineWidth = 3; [[-60, 560], [70, 520], [-30, 500], [40, 600], [-85, 610], [90, 580]].forEach(([dx, dy]) => { x.beginPath(); x.moveTo(px - 4, 640 - (640 - dy) * .3); x.quadraticCurveTo(px + dx * .4, dy + 30, px + dx, dy); x.stroke(); });
+  const greens = ['#3a5129', '#516d35', '#2c4020', '#647f40', '#45602d'];
+  const clusters = [[1390, 560, 70], [1460, 520, 60], [1425, 600, 70], [1350, 615, 50], [1500, 585, 50], [1410, 495, 45]];
+  for (let i = 0; i < 460; i++) {
+    const [cx, cy, r] = clusters[i % clusters.length], a = R() * Math.PI * 2, d = Math.sqrt(R()) * r;
+    x.save(); x.translate(cx + Math.cos(a) * d, cy + Math.sin(a) * d * .8); x.rotate(R() * Math.PI);
+    ell(x, 0, 0, 9 + R() * 5, 3 + R() * 1.5); x.fillStyle = greens[(R() * greens.length) | 0]; x.fill(); x.restore();
+  }
+  x.fillStyle = lin(x, px - 64, 0, px + 64, 0, [[0, '#cfc3b0'], [.4, '#efe7da'], [1, '#bfb19c']]);
+  x.beginPath(); x.moveTo(px - 64, top); x.lineTo(px + 64, top); x.lineTo(px + 50, base); x.lineTo(px - 50, base); x.closePath(); x.fill();
+  ell(x, px, top, 64, 9); x.fillStyle = '#e6dccd'; x.fill(); ell(x, px, top + 1, 56, 6); x.fillStyle = '#3a2a1e'; x.fill();
+  L.plant = c;
+}
+
+function buildDecor() {
+  const [c, x] = layer();
+  ell(x, 760, 790, 170, 30); x.fillStyle = '#d6c7b2'; x.fill(); ell(x, 760, 788, 160, 26); x.fillStyle = '#dfd2bf'; x.fill();
+  rr(x, 590, 507, 86, 14, 4); x.fillStyle = '#d4c6b3'; x.fill(); rr(x, 594, 494, 78, 14, 4); x.fillStyle = '#efe8dd'; x.fill();
+  rr(x, 828, 498, 8, 22, 2); x.fillStyle = '#141211'; x.fill();
+  x.strokeStyle = '#a07650'; x.lineWidth = 1.6;
+  for (let i = 0; i < 9; i++) { const a = (i - 4) * .09; x.beginPath(); x.moveTo(890, 500); x.quadraticCurveTo(890 + a * 120, 460, 890 + a * 260, 400 - Math.abs(a) * 60); x.stroke();
+    ell(x, 890 + a * 260, 400 - Math.abs(a) * 60, 6, 12); x.fillStyle = 'rgba(214,186,150,.7)'; x.fill(); }
+  x.fillStyle = lin(x, 876, 0, 904, 0, [[0, '#b39b7d'], [.5, '#d8c4a6'], [1, '#a68d6f']]); rr(x, 876, 494, 28, 28, 8); x.fill();
+  [[384, 22, '#e9e2d6'], [412, 26, '#1b1817'], [440, 20, '#b8473b'], [490, 18, '#e9e2d6']].forEach(([bx, h, col]) => { rr(x, bx, 378 - h, 16, h, 3); x.fillStyle = col; x.fill(); });
+  x.fillStyle = '#efe8dd'; rr(x, 1182, 376, 50, 18, 3); x.fill();
+  L.decor = c;
+}
+
+function lights(x, f) {
+  if (f <= 0) return;
+  x.save();
+  x.globalAlpha = f;
+  x.globalCompositeOperation = 'soft-light'; x.fillStyle = '#ff9a48'; x.fillRect(0, 0, W, H);
+  x.globalCompositeOperation = 'multiply';
+  x.fillStyle = rad(x, 790, 470, 980, [[0, '#ffffff'], [.5, '#f3e6da'], [1, '#7d6352']]); x.fillRect(0, 0, W, H);
+  x.globalCompositeOperation = 'screen';
+  const wash = (cx, cy, r, a) => { x.save(); x.translate(cx, cy); x.scale(1, 1.8); x.fillStyle = rad(x, 0, 0, r, [[0, `rgba(255,212,160,${a})`], [1, 'rgba(255,212,160,0)']]); x.fillRect(-r, 0, r * 2, r); x.restore(); };
+  wash(632, 118, 230, .5); wash(968, 118, 230, .5); wash(412, 118, 170, .3); wash(1115, 118, 180, .3);
+  x.fillStyle = rad(x, 757, 360, 230, [[0, 'rgba(255,222,176,.55)'], [1, 'rgba(255,222,176,0)']]); x.fillRect(527, 130, 460, 460);
+  x.fillStyle = lin(x, 0, 330, 0, 382, [[0, 'rgba(255,196,130,.9)'], [1, 'rgba(255,196,130,0)']]); x.fillRect(372, 330, 150, 52);
+  x.fillStyle = lin(x, 0, 361, 0, 398, [[0, 'rgba(255,190,120,.9)'], [1, 'rgba(255,190,120,0)']]); x.fillRect(972, 361, 288, 37);
+  x.fillStyle = lin(x, 0, 620, 0, 700, [[0, 'rgba(255,186,110,.6)'], [1, 'rgba(255,186,110,0)']]); x.fillRect(570, 620, 380, 80);
+  x.save(); x.translate(757, 712); x.scale(1, .16); x.fillStyle = rad(x, 0, 0, 240, [[0, 'rgba(255,190,120,.6)'], [1, 'rgba(255,190,120,0)']]); x.fillRect(-240, -240, 480, 480); x.restore();
+  [640, 875].forEach(px => { x.fillStyle = rad(x, px, 392, 70, [[0, 'rgba(255,214,150,.9)'], [1, 'rgba(255,214,150,0)']]); x.fillRect(px - 70, 322, 140, 140); });
+  LIGHTS.forEach(([lx, ly]) => { x.fillStyle = rad(x, lx, ly, 34, [[0, 'rgba(255,248,232,1)'], [.3, 'rgba(255,238,210,.6)'], [1, 'rgba(255,230,200,0)']]); x.fillRect(lx - 34, ly - 34, 68, 68); });
+  x.globalCompositeOperation = 'lighter';
+  x.shadowColor = 'rgba(255,214,160,1)'; x.shadowBlur = 36; x.strokeStyle = 'rgba(255,240,214,.95)'; x.lineWidth = 4;
+  pill(x, 757, 243, 473, 118); x.stroke();
+  x.restore();
+}
+
+/* ---------- compositor ---------- */
+const SEQ = { imgs: [], ready: false };
+if (SEQUENCE) for (let i = 0; i < SEQUENCE.count; i++) { const im = new Image(); im.decoding = 'async'; im.onload = () => { SEQ.ready = true; kick(true); }; im.src = SEQUENCE.src(i); SEQ.imgs.push(im); }
+
+const PAN = [[0, 800], [.18, 560], [.38, 560], [.44, 1100], [.56, 1100], [.62, 757], [.76, 820], [1, 900]];
+function panAt(p) { for (let i = 1; i < PAN.length; i++) if (p <= PAN[i][0]) { const [a, va] = PAN[i - 1], [b, vb] = PAN[i]; return lerp(va, vb, ease((p - a) / (b - a))); } return PAN.at(-1)[1]; }
+
+function render(x, p, w, h, o = {}) {
+  const s = Math.max(w / W, h / H) * (o.zoom ?? 1), fx = o.fx ?? 800, fy = o.fy ?? 450;
+  const ox = clamp(w / 2 - fx * s, w - W * s, 0), oy = clamp(h / 2 - fy * s, h - H * s, 0);
+  x.setTransform(1, 0, 0, 1, 0, 0); x.fillStyle = '#1b120f'; x.fillRect(0, 0, w, h);
+  x.setTransform(s, 0, 0, s, ox, oy);
+  if (SEQ.ready) {
+    let i = Math.round(p * (SEQ.imgs.length - 1)), im = SEQ.imgs[i];
+    for (let d = 1; !im.complete && d < SEQ.imgs.length; d++) im = SEQ.imgs[clamp(i - d, 0, SEQ.imgs.length - 1)];
+    if (im.complete && im.naturalWidth) x.drawImage(im, 0, 0, W, H); return;
+  }
+  const img = (c, a = 1) => { if (a <= 0) return; x.globalAlpha = a; x.drawImage(c, 0, 0, W, H); x.globalAlpha = 1; };
+  img(L.raw);
+  const A = ease(seg(p, .08, .22));
+  if (A > 0) { x.save(); x.beginPath(); x.rect(0, 0, W, 700 + 200 * A); x.clip(); img(L.floor); x.restore(); }
+  img(L.plaster, ease(seg(p, .28, .40)));
+  const B = ease(seg(p, .13, .30));
+  if (B > 0) { x.save(); x.beginPath(); x.rect(0, 0, 560, H * B); x.clip(); img(L.marble); x.restore(); }
+  img(L.glass, ease(seg(p, .27, .34)));
+  const D = seg(p, .36, .50) * SLATS.length;
+  if (D > 0) { x.save(); x.beginPath(); x.rect(960, 120, 2, 580 * clamp(D)); SLATS.forEach((sx, i) => { const f = ease(clamp(D - i)); if (f > 0) x.rect(sx - 2, 120, 26, 580 * f); }); x.clip(); img(L.slats); x.restore(); }
+  const rise = (c, a, dy) => { if (a <= 0) return; x.save(); x.translate(0, (1 - a) * dy); img(c, a); x.restore(); };
+  rise(L.mirror, ease(seg(p, .54, .62)), -10);
+  rise(L.vanity, ease(seg(p, .50, .58)), 16);
+  rise(L.toilet, ease(seg(p, .70, .78)), 12);
+  rise(L.decor, ease(seg(p, .82, .92)), 8);
+  rise(L.plant, ease(seg(p, .76, .86)), 14);
+  lights(x, ease(seg(p, .62, .76)));
+}
+
+/* ---------- page wiring ---------- */
+const story = document.getElementById('top'), canvas = document.getElementById('scene'), ctx = canvas.getContext('2d');
+const nav = document.getElementById('nav'), stage = document.getElementById('stage'), scrim = document.getElementById('scrim');
+const chapters = [...document.querySelectorAll('.chapter')].map(el => ({ el, a: +el.dataset.in, b: +el.dataset.out }));
+const steps = [...document.querySelectorAll('#rail li')].map(el => ({ el, at: +el.dataset.at }));
+const dayN = document.getElementById('dayN'), bar = document.getElementById('bar'), hint = document.getElementById('hint');
+let target = 0, cur = -1, raf = 0, built = false, cw = 0, ch = 0;
+
+function size() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  cw = canvas.width = Math.round(stage.clientWidth * dpr); ch = canvas.height = Math.round(stage.clientHeight * dpr);
+}
+function measure() {
+  const r = story.getBoundingClientRect(), max = r.height - innerHeight;
+  target = clamp(-r.top / max);
+  nav.classList.toggle('solid', r.bottom < 70);
+}
+function ui(p) {
+  chapters.forEach(({ el, a, b }) => {
+    const fi = a < 0 ? 1 : seg(p, a, a + .035), fo = 1 - seg(p, b - .035, b), o = Math.min(fi, fo);
+    el.style.opacity = o.toFixed(3);
+    el.style.translate = `0 ${((1 - fi) * 28 - (1 - fo) * 28).toFixed(1)}px`;
+    el.classList.toggle('on', o > .5);
+    el.style.visibility = o > 0 ? 'visible' : 'hidden';
+  });
+  let now = 0; steps.forEach((s, i) => { if (p >= s.at) now = i; });
+  steps.forEach((s, i) => { s.el.classList.toggle('now', i === now); s.el.classList.toggle('done', i < now); });
+  dayN.textContent = 1 + Math.round(p * 20);
+  bar.style.transform = `scaleX(${p.toFixed(4)})`;
+  scrim.style.opacity = ease(seg(p, .15, .22)).toFixed(3);
+  const light = p > .17;
+  nav.dataset.tone = light ? 'light' : 'ink';
+  stage.style.setProperty('--top-shade', light ? 1 : 0);
+  hint.style.opacity = (1 - seg(p, 0, .03)).toFixed(2);
+}
+function draw(p) {
+  const portrait = cw / ch < .9;
+  render(ctx, p, cw, ch, { zoom: portrait ? 1 : 1.07 - .07 * ease(p), fx: portrait ? panAt(p) : 800, fy: portrait ? 470 : 450 });
+}
+function frame() {
+  raf = 0;
+  const d = target - cur;
+  cur = reduce || Math.abs(d) < .0004 ? target : cur + d * .12;
+  draw(cur); ui(cur);
+  if (cur !== target) raf = requestAnimationFrame(frame);
+}
+function kick(force) { if (!built) return; if (force) cur = cur === target ? -1 : cur; if (!raf) raf = requestAnimationFrame(frame); }
+
+function renderStill() {
+  const c = document.getElementById('still'), dpr = Math.min(devicePixelRatio || 1, 2);
+  c.width = Math.round(c.clientWidth * dpr); c.height = Math.round(c.clientHeight * dpr);
+  render(c.getContext('2d'), 1, c.width, c.height, { fx: 720, fy: 470, zoom: 1.45 });
+}
+
+addEventListener('scroll', () => { measure(); kick(); }, { passive: true });
+addEventListener('resize', () => { size(); measure(); if (built) { cur = -1; kick(); renderStill(); } });
+
+size(); measure(); ui(target);
+requestAnimationFrame(() => {
+  buildRaw(); buildFloor(); buildPlaster(); buildMarble(); buildGlass(); buildSlats();
+  buildVanity(); buildMirror(); buildToilet(); buildPlant(); buildDecor();
+  built = true; cur = -1; kick(); renderStill();
+});
+
+document.getElementById('quote').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = document.getElementById('q-name').value.trim(), st = document.getElementById('status');
+  st.textContent = name ? `Thanks, ${name}. This is a concept page, so nothing was sent.` : 'Add your name so we know who to reply to.';
+});
+})();
+</script>
